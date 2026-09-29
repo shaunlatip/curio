@@ -12,22 +12,21 @@ npx tsc --noEmit         # typecheck
 npm run build            # what Vercel runs — do this before pushing to main
 npm run eval:router      # score the input router on src/lib/router/cases.json
 npm run record:examples  # re-record the homepage examples (needs the dev server + local Claude)
-npm run bench:models -- --env <path/.env.local> <model …>   # hosted models end to end (needs npm run build + OPENROUTER_API_KEY; spends real credit)
+npm run bench:models -- --env <path/.env.local> <model …>   # hosted models end to end (needs npm run build + AI_GATEWAY_API_KEY; spends real credit)
 ```
 
 Node 22, **npm** (not pnpm). After a dep change or a directory move, `rm -rf .next` before restarting (stale Turbopack manifest → "module is not a function" errors).
 
-Auth: nothing for search, categories, calm scoring, collections, export or the recorded examples. **Curio** (the agent) and the **describe** route call a model through one of three engines (`src/lib/ai/models.ts`, `curatorEngine()`):
+Auth: nothing for search, categories, calm scoring, collections, export or the recorded examples. **Curio** (the agent) and the **describe** route call a model through one of two engines (`src/lib/ai/models.ts`, `curatorEngine()`):
 
 - **`claude`** (default off Vercel): a local Claude Code session on your `claude login`, through `ai-sdk-provider-claude-code`. Locked down to Curio's own tools: no built-in Claude Code tools, no user settings/hooks/CLAUDE.md, `strictMcpConfig` + `ENABLE_CLAUDEAI_MCP_SERVERS=false` so the account's connectors (Gmail, Todoist…) are invisible. Don't loosen that.
-- **`openrouter`** (default on Vercel): the AI SDK tool loop over OpenRouter; needs `OPENROUTER_API_KEY`.
-- **`gateway`** (opt-in): the same loop over the Vercel AI Gateway (`AI_GATEWAY_API_KEY` or OIDC on Vercel).
+- **`gateway`** (default on Vercel): the AI SDK tool loop over Vercel AI Gateway, authenticated with OIDC on Vercel or `AI_GATEWAY_API_KEY` locally.
 
-`CURIO_LLM_ENGINE=claude|openrouter|gateway` overrides. Models: `CURIO_CURATOR_MODEL` / `CURIO_INTERPRET_MODEL` (comma lists, first is primary), `CURIO_LOCAL_MODEL` / `CURIO_LOCAL_INTERPRET_MODEL` (Claude aliases, default sonnet / haiku). Without a hosted key Curio says it isn't set up and describe searches the words as typed. See `.env.example` and § Deploy.
+`CURIO_LLM_ENGINE=claude|gateway` overrides. Models: `CURIO_CURATOR_MODEL` / `CURIO_INTERPRET_MODEL` (comma lists, first is primary), `CURIO_LOCAL_MODEL` / `CURIO_LOCAL_INTERPRET_MODEL` (Claude aliases, default sonnet / haiku). Without a hosted key Curio says it isn't set up and describe searches the words as typed. See `.env.example` and § Deploy.
 
 ## Stack & conventions
 
-Next.js 16 App Router · React 19 · TypeScript · Tailwind v4 (CSS `@theme` in `src/app/globals.css`, no config file) · **AI SDK v7** (`ai`, `@ai-sdk/react` `useChat`) with `@openrouter/ai-sdk-provider`, the built-in Gateway and `ai-sdk-provider-claude-code` (+ `@anthropic-ai/claude-agent-sdk` for the in-process MCP server) · `use-stick-to-bottom` (the thread's scroll) · `loading-dev` (Flip / Morph / Gather spinners) · `lucide-react` through `components/Icon.tsx` (1.5 stroke, square caps, miter joins) · `sharp` (via Next, calm analysis) · `zod`. No component library: every control is hand-set in the register below.
+Next.js 16 App Router · React 19 · TypeScript · Tailwind v4 (CSS `@theme` in `src/app/globals.css`, no config file) · **AI SDK v7** (`ai`, `@ai-sdk/react` `useChat`) with the built-in Gateway and `ai-sdk-provider-claude-code` (+ `@anthropic-ai/claude-agent-sdk` for the in-process MCP server) · `use-stick-to-bottom` (the thread's scroll) · `loading-dev` (Flip / Morph / Gather spinners) · `lucide-react` through `components/Icon.tsx` (1.5 stroke, square caps, miter joins) · `sharp` (via Next, calm analysis) · `zod`. No component library: every control is hand-set in the register below.
 
 **Design register — American art museums (Whitney / MFA / Guggenheim): flat, Swiss 12-column grid, ZERO border-radius, NO shadows, ink `#0a0a0a` on paper `#fff`, one accent `#2400ff` (the primary action, live activity, keyboard focus), Lunchtype + Geist Mono, sentence case (never all-caps), no em dashes in UI copy.** `globals.css` zeroes every `--radius-*` and `--shadow-*` token. Elevation = a 1px ink border. Hover = invert (`.invert-hover`) or the wash stepping to `--color-wash-strong`; cards get a 3px inner ink "mat". Labels use `.caption`; `font-mono` only for technical values; `.tabular` on numbers that update in place.
 
@@ -134,14 +133,14 @@ Interaction notes: `/` focuses the input from anywhere; Backspace in an empty co
 
 The app was called Loupe until September 2026. The Vercel project, production domain, and GitHub repo (`shaunlatip/loupe`) still use the old name; collections saved under `loupe.collections.v1` move to `curio.collections.v1` on first load.
 
-Production is **https://loupe-xi.vercel.app** — project `loupe` in team "Shaun's projects" (Hobby), GitHub-linked: **every push to `main` builds and deploys.** Preview deployments are SSO-protected, so verify on production. Env vars (then redeploy): `OPENROUTER_API_KEY` for Curio/describe (default curator Claude Haiku 4.5 with Gemini 3.1 Flash-Lite as fallback, about $0.03 a turn; chosen with `npm run bench:models`, which runs seven turns per model through the real route on a production build and reports pass/fail, time, comments and spend; `:free` models are rate-limited upstream and unusable for public traffic). **If `CURIO_CURATOR_MODEL` is set on Vercel it overrides the default: remove it or set it to the default.** optional model overrides above; optional `CURIO_LLM_ENGINE=gateway`; optional `HARVARD_API_KEY`. Hobby caps functions at **60s** — raise `maxDuration` only on Pro.
+Production is **https://loupe-xi.vercel.app** — project `loupe` in team "Shaun's projects" (Hobby), GitHub-linked: **every push to `main` builds and deploys.** Preview deployments are SSO-protected, so verify on production. Curio and describe use AI Gateway by default, authenticated with Vercel OIDC in production (or `AI_GATEWAY_API_KEY` locally). Set an AI Gateway budget before serving traffic. The default curator uses Claude Haiku 4.5 with Gemini 3.1 Flash-Lite as fallback; `npm run bench:models` runs seven turns per model through the real route on a production build and reports pass/fail, time and comments. **If `CURIO_CURATOR_MODEL` is set on Vercel it overrides the default: remove it or set it to the default.** optional model overrides above; optional `CURIO_LLM_ENGINE=claude` for local development; optional `HARVARD_API_KEY`. Hobby caps functions at **60s** — raise `maxDuration` only on Pro.
 
 **AIC egress rules** (Cloudflare in front of `www.artic.edu/iiif`): it 403s **any cross-origin Referer** and **any datacenter IP**. So every museum `<img>` carries `referrerPolicy="no-referrer"`; `source-egress.ts` names such hosts and the browser fetches their bytes (calm POST, single-work Download). On Vercel, collection zips skip AIC works, and Curio can't view AIC thumbnails (it still searches and presents them by metadata; the prompt tells it so).
 
 ## Known issues / gotchas
 
 - **Met 403s** (upstream Cloudflare, IP/rate based) — for long stretches after bursts. Non-fatal for search; follow-ups keep earlier Met works via the thread's records.
-- **Local describe is slow** (12–30s: the Claude CLI starts per request). The wall shows literal results first and swaps in the reading. `CURIO_LLM_ENGINE=openrouter` locally is faster if you have a key.
+- **Local describe is slow** (12–30s: the Claude CLI starts per request). The wall shows literal results first and swaps in the reading. `CURIO_LLM_ENGINE=gateway` locally exercises the hosted path if you have an AI Gateway key.
 - **The describe reading can over-constrain** (invented dates or a movement, dropped nouns). The chips make it visible and removable; the interpret prompt is the lever.
 - **Met `tags=true` search intermittently returns 0** — categories using `met.tags` lose their Met slice while it lasts.
 - **AIC's "night" subject terms are empty of public-domain works** — `nocturne-night` uses full-text `q:"nocturne"`.

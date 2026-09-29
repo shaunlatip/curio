@@ -110,7 +110,7 @@ export interface CurioMetadata {
   fresh?: boolean;
   /** assistant message: the model that answered, human-readable */
   model?: string;
-  engine?: "claude" | "openrouter" | "gateway";
+  engine?: "claude" | "gateway";
   /** local engine: the Claude Code session to resume on the next turn */
   claudeSessionId?: string;
   startedAt?: number;

@@ -14,10 +14,10 @@ npm run dev
 Search, browsing, collections, downloads and the six recorded examples on the homepage work with no keys. Curio itself (and reading a description into a search) needs a model:
 
 - **Local, free on a Claude subscription:** run `claude login` once (the Claude Code CLI). `npm run dev` then uses a local Claude session, locked to Curio's own tools.
-- **Anywhere, with an API key:** copy `.env.example` to `.env.local`, set `OPENROUTER_API_KEY`, and set `CURIO_LLM_ENGINE=openrouter`. This is what the hosted site runs.
+- **AI Gateway:** copy `.env.example` to `.env.local` and set `AI_GATEWAY_API_KEY` to test the hosted path locally. On Vercel, the hosted site authenticates with OIDC automatically.
 
 ## Deploy
 
-Vercel, with `OPENROUTER_API_KEY` set in the project's environment variables (the hosted engine is chosen automatically there). Put a credit limit on the key: Curio makes several model calls per turn. See `.env.example` for model overrides and `AGENTS.md` for how everything fits together.
+Vercel, with AI Gateway enabled. The hosted engine is chosen automatically and authenticates with Vercel OIDC. Set an AI Gateway budget because Curio makes several model calls per turn. See `.env.example` for model overrides and `AGENTS.md` for how everything fits together.
 
 By [Shaun Latip](https://latip.me).
