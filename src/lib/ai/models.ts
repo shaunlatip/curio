@@ -1,4 +1,3 @@
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { gateway, type LanguageModel } from "ai";
 
 /**
@@ -7,22 +6,19 @@ import { gateway, type LanguageModel } from "ai";
  *   claude      Local `npm run dev`: the Claude Agent SDK via the
  *               ai-sdk-provider-claude-code provider, on your `claude login`
  *               subscription. Tools reach it as an in-process MCP server.
- *   openrouter  Hosted default (Vercel): OpenRouter through its AI SDK
- *               provider, on the OPENROUTER_API_KEY the deployment already has.
- *   gateway     Opt-in: the Vercel AI Gateway (OIDC on Vercel, or
- *               AI_GATEWAY_API_KEY locally). Set CURIO_LLM_ENGINE=gateway once
- *               the Gateway is enabled on the account.
+ *   gateway     Hosted default: the Vercel AI Gateway (OIDC on Vercel, or
+ *               AI_GATEWAY_API_KEY locally).
  *
- * Vercel sets VERCEL=1; CURIO_LLM_ENGINE=claude|openrouter|gateway overrides
+ * Vercel sets VERCEL=1; CURIO_LLM_ENGINE=claude|gateway overrides
  * the choice either way (e.g. to exercise the hosted path locally).
  */
 
-export type Engine = "claude" | "openrouter" | "gateway";
+export type Engine = "claude" | "gateway";
 
 export function curatorEngine(): Engine {
   const o = process.env.CURIO_LLM_ENGINE?.trim().toLowerCase();
-  if (o === "claude" || o === "openrouter" || o === "gateway") return o;
-  return process.env.VERCEL ? "openrouter" : "claude";
+  if (o === "claude" || o === "gateway") return o;
+  return process.env.VERCEL ? "gateway" : "claude";
 }
 
 /**
@@ -60,21 +56,14 @@ export const INTERPRET_MODELS = modelList(process.env.CURIO_INTERPRET_MODEL, DEF
 export const LOCAL_CURATOR_MODEL = process.env.CURIO_LOCAL_MODEL?.trim() || "sonnet";
 export const LOCAL_INTERPRET_MODEL = process.env.CURIO_LOCAL_INTERPRET_MODEL?.trim() || "haiku";
 
-function openRouterKey(): string | undefined {
-  return process.env.LLM_API_KEY?.trim() || process.env.OPENROUTER_API_KEY?.trim() || undefined;
-}
-
 /** Can the hosted engine make a call at all? (Local Claude uses CLI auth.) */
 export function hostedConfigured(engine: Engine): boolean {
-  if (engine === "openrouter") return Boolean(openRouterKey());
-  if (engine === "gateway") {
-    return Boolean(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || process.env.VERCEL);
-  }
+  if (engine === "gateway") return Boolean(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || process.env.VERCEL);
   return true;
 }
 
 export const NOT_CONFIGURED =
-  "Curio isn't set up on this deployment yet. It needs OPENROUTER_API_KEY (or the AI Gateway).";
+  "Curio isn't set up on this deployment yet. It needs AI Gateway authentication.";
 
 /** A hosted model plus the options that carry its fallbacks. */
 export function hostedModel(kind: "curator" | "interpret", engine: Engine): {
@@ -82,22 +71,10 @@ export function hostedModel(kind: "curator" | "interpret", engine: Engine): {
   providerOptions?: Record<string, Record<string, unknown>>;
 } {
   const [primary, ...fallbacks] = kind === "curator" ? CURATOR_MODELS : INTERPRET_MODELS;
-  if (engine === "gateway") {
-    return {
-      model: gateway(primary),
-      providerOptions: fallbacks.length ? { gateway: { models: fallbacks } } : undefined,
-    };
-  }
-  const baseURL = process.env.LLM_BASE_URL?.trim() || undefined;
-  const openrouter = createOpenRouter({
-    apiKey: openRouterKey(),
-    baseURL,
-    appName: "Curio",
-    appUrl: "https://curiosearch.art",
-  });
+  if (engine !== "gateway") throw new Error("A hosted model requires the AI Gateway.");
   return {
-    model: openrouter.chat(primary),
-    providerOptions: fallbacks.length ? { openrouter: { models: [primary, ...fallbacks] } } : undefined,
+    model: gateway(primary),
+    providerOptions: fallbacks.length ? { gateway: { models: fallbacks } } : undefined,
   };
 }
 
@@ -124,7 +101,7 @@ export function describeLlmError(err: unknown): string {
     return "The model is rate-limited right now. Try again in a minute.";
   }
   if (status === 401 || status === 403) {
-    return "The model provider rejected the key. Check OPENROUTER_API_KEY.";
+    return "The model provider rejected AI Gateway authentication.";
   }
   if (status === 402) {
     return "The model account is out of credit. Top it up and try again.";

@@ -197,13 +197,13 @@ function withoutToolChunks<T extends { type: string }>(
   );
 }
 
-/** Hosted: the AI SDK tool loop over OpenRouter or the Gateway. */
+/** Hosted: the AI SDK tool loop over Vercel AI Gateway. */
 async function runHosted(
   messages: CurioUIMessage[],
   wall: WallContext | undefined,
   ctx: MuseumContext,
   writer: Writer,
-  engine: "openrouter" | "gateway",
+  engine: "gateway",
   startedAt: number,
   signal: AbortSignal,
 ) {

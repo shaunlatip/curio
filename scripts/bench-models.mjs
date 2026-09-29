@@ -6,11 +6,10 @@
  *   node scripts/bench-models.mjs --env ~/path/.env.local model-a model-b …
  *
  * For each model: start the production build (`next start`) on the hosted
- * engine (CURIO_LLM_ENGINE=openrouter) with that model alone (no fallbacks),
+ * engine (CURIO_LLM_ENGINE=gateway) with that model alone (no fallbacks),
  * run the same seven turns through /api/agent, then stop it. The key is read
  * from the env file and handed to the server's environment; it is never
- * printed. Spend per model comes from OpenRouter's credits endpoint, read
- * before and after (it can lag a few seconds, so there's a pause).
+ * printed. Inspect spend in AI Gateway observability after a run.
  *
  * Writes .context/bench/<timestamp>.json and prints a summary.
  */
@@ -28,25 +27,20 @@ if (!models.length) throw new Error("name at least one model");
 
 const key = readFileSync(envFile.replace(/^~/, process.env.HOME), "utf8")
   .split("\n")
-  .map((l) => l.match(/^\s*OPENROUTER_API_KEY\s*=\s*"?([^"\s]+)"?/))
+  .map((l) => l.match(/^\s*AI_GATEWAY_API_KEY\s*=\s*"?([^"\s]+)"?/))
   .find(Boolean)?.[1];
-if (!key) throw new Error(`no OPENROUTER_API_KEY in ${envFile}`);
+if (!key) throw new Error(`no AI_GATEWAY_API_KEY in ${envFile}`);
 
 const PORT = 4987;
 const BASE = `http://localhost:${PORT}`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function usage() {
-  const res = await fetch("https://openrouter.ai/api/v1/credits", { headers: { authorization: `Bearer ${key}` } });
-  if (!res.ok) return undefined;
-  const j = await res.json();
-  return j?.data?.total_usage;
-}
+
 
 function startServer(model) {
   const child = spawn(join(root, "node_modules/.bin/next"), ["start", "-p", String(PORT)], {
     cwd: root,
-    env: { ...process.env, CURIO_LLM_ENGINE: "openrouter", CURIO_CURATOR_MODEL: model, OPENROUTER_API_KEY: key },
+    env: { ...process.env, CURIO_LLM_ENGINE: "gateway", CURIO_CURATOR_MODEL: model, AI_GATEWAY_API_KEY: key },
     stdio: ["ignore", "pipe", "pipe"],
   });
   let log = "";
@@ -158,8 +152,6 @@ async function runModel(model) {
   const cases = [];
   try {
     await waitUp();
-    const before = await usage();
-
     // A: curate from scratch
     const a = await turn([user("u1", CATS)]);
     cases.push({ id: "A curate", expect: ["exhibit"], r: a });
@@ -191,9 +183,7 @@ async function runModel(model) {
     ]);
     cases.push({ id: "G attached question", expect: ["answer"], r: g, check: g.steps.some((s) => s.kind === "read") });
 
-    await sleep(15_000);
-    const after = await usage();
-    return { model, spend: before !== undefined && after !== undefined ? after - before : undefined, cases };
+    return { model, cases };
   } finally {
     server.child.kill("SIGTERM");
     await sleep(1500);
@@ -225,7 +215,6 @@ for (const model of models) {
         (c.r.error ? `  error: ${String(c.r.error).slice(0, 120)}` : ""),
     );
   }
-  console.log(`  spend $${res.spend?.toFixed(4) ?? "?"}`);
 }
 const file = join(root, ".context/bench", `${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
 writeFileSync(file, JSON.stringify(all, null, 2));
