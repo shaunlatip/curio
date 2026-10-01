@@ -314,17 +314,30 @@ export default function ThreadProvider({
 
   // — composer focus. Every mounted composer registers (the hero or the top
   // bar, and the thread's while it's open); focus goes to the one that
-  // mounted last, i.e. the thread's when it's showing.
+  // mounted last, i.e. the thread's when it's showing. With none on the page
+  // (an exhibit on the wall, the thread closed), the thread opens and its
+  // input takes the focus as it mounts.
 
   const composers = useRef<HTMLTextAreaElement[]>([]);
+  const focusOnMount = useRef(false);
   const registerComposer = useCallback((el: HTMLTextAreaElement, present: boolean) => {
     composers.current = composers.current.filter((x) => x !== el);
-    if (present) composers.current.push(el);
+    if (!present) return;
+    composers.current.push(el);
+    if (focusOnMount.current) {
+      focusOnMount.current = false;
+      requestAnimationFrame(() => el.focus());
+    }
   }, []);
   const focusComposer = useCallback(() => {
     requestAnimationFrame(() => {
       const live = composers.current.filter((el) => el.isConnected);
-      live[live.length - 1]?.focus();
+      if (live.length > 0) {
+        live[live.length - 1].focus();
+        return;
+      }
+      focusOnMount.current = true;
+      setOpenState(true);
     });
   }, []);
 

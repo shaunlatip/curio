@@ -528,6 +528,10 @@ export default function Home() {
       : undefined;
 
   const showWall = searched || results.artworks.length > 0;
+  // Once the wall is Curio's (its exhibit, or a turn begun on an empty wall),
+  // the thread's input is the only way to follow up: no search bar, no
+  // filters to start a new query from.
+  const curioWall = results.origin === "curio" || (curating && results.artworks.length === 0);
 
   // What Curio is told is on the wall (text only, first 24).
   const wall = useMemo<WallContext>(
@@ -640,16 +644,20 @@ export default function Home() {
 
         {showWall ? (
           <>
-            <TopComposer />
-            <div className="border-b border-ink py-4 max-sm:py-3">
-              <FilterRow
-                sources={ALL_SOURCES}
-                enabled={sources}
-                onToggleSource={toggleSource}
-                activeCategories={activeCategories}
-                onToggleCategory={toggleCategory}
-              />
-            </div>
+            {!curioWall && (
+              <>
+                <TopComposer />
+                <div className="border-b border-ink py-4 max-sm:py-3">
+                  <FilterRow
+                    sources={ALL_SOURCES}
+                    enabled={sources}
+                    onToggleSource={toggleSource}
+                    activeCategories={activeCategories}
+                    onToggleCategory={toggleCategory}
+                  />
+                </div>
+              </>
+            )}
 
             <div className="pt-8 max-sm:pt-5">
               <CuratorTable emptyWall={curating && results.artworks.length === 0} />

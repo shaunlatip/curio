@@ -38,7 +38,7 @@ Next.js 16 App Router · React 19 · TypeScript · Tailwind v4 (CSS `@theme` in 
 
 ### One input, four routes (`src/lib/router/`)
 
-Every composer (the hero, the top bar, the thread) submits through `ThreadProvider.submit`, which routes with `classifyRules` (instant, client-side; the button's verb previews it: **Search / Find / Ask**, with a caret for overrides):
+Every composer (the hero, the top bar, the thread) submits through `ThreadProvider.submit`, which routes with `classifyRules` (instant, client-side; the button's verb previews it: **Search / Find / Ask**, with a caret for overrides). While the wall is Curio's (its exhibit, or a turn begun on an empty wall) the top bar and the filter row are gone: follow-ups go through the thread, and `/` opens it. The routes:
 
 - **lookup** — a name, title or plain keyword → the museums' own search (`GET /api/search`), no model.
 - **describe** — a short description → literal results first, then `POST /api/interpret` (vocabulary fast path when it covers the whole phrase, else `generateText` + `Output.object`) → the compiled `SearchQuery`, shown as removable chips on the wall label (`src/lib/query-chips.ts`: the reading, deduped, ≤ 6).
