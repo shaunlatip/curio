@@ -132,17 +132,20 @@ button:active:not(:disabled):not(.press-none) {
   color: transparent;
 }
 
-/* The wordmark (back to the start) fills with ink on hover, the hollow
- * letters taking the same invert as every other button. On touch it fills
+/* The wordmark (back to the start) fills its hollow letters with the
+ * pressed wash on hover, quicker than a button's 120ms. On touch it fills
  * while pressed, for the reason given at .invert-hover. */
+.wordmark {
+  transition: color 50ms;
+}
 @media (hover: hover) {
   .wordmark:hover {
-    color: var(--color-ink);
+    color: var(--color-wash-strong);
   }
 }
 @media (hover: none) {
   .wordmark:active {
-    color: var(--color-ink);
+    color: var(--color-wash-strong);
   }
 }
 
@@ -410,6 +413,7 @@ button:active:not(:disabled):not(.press-none) {
     background: none;
   }
   .invert-hover,
+  .wordmark,
   button {
     transition: none;
   }
