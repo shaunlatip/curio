@@ -790,7 +790,7 @@ function SiteHeader({
     <header className="grid grid-cols-12 items-end gap-x-6 gap-y-4 border-b border-ink py-8 max-sm:gap-x-3 max-sm:py-5">
       <h1 className="col-span-6 max-sm:col-span-4 text-outline text-[64px] leading-[1.05] font-bold tracking-[-0.02em] max-md:text-[44px] max-sm:text-[40px]">
         {/* the wordmark is intentionally lowercase */}
-        <button type="button" onClick={onHome} title="Back to the start" className="press-none text-inherit">
+        <button type="button" onClick={onHome} title="Back to the start" className="wordmark press-none text-inherit">
           curio
         </button>
       </h1>
