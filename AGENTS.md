@@ -38,14 +38,14 @@ Next.js 16 App Router · React 19 · TypeScript · Tailwind v4 (CSS `@theme` in 
 
 ### One input, four routes (`src/lib/router/`)
 
-Every composer (the hero, the top bar, the thread) submits through `ThreadProvider.submit`, which routes with `classifyRules` (instant, client-side; the button's verb previews it: **Search / Find / Ask**, with a caret for overrides). While the wall is Curio's (its exhibit, or a turn begun on an empty wall) the top bar and the filter row are gone: follow-ups go through the thread, and `/` opens it. The routes:
+Every composer (the hero, the top bar, the thread) submits through `ThreadProvider.submit`, which sends it to Curio by default. The caret menu picks the mode per message (**Ask Curio** is the default and comes back after each send; **Let Curio decide** routes with `classifyRules`, instant and client-side, the button's verb previewing it as **Search / Ask**; **Search exactly** and **Read it as a description** force lookup and describe). The menu renders on `<body>` (`createPortal`): `.animate-fade` keeps a stacking context on its wrappers that would otherwise trap it under the wall. While the wall is Curio's (its exhibit, or a turn begun on an empty wall) the top bar and the filter row are gone: follow-ups go through the thread, and `/` opens it. The routes:
 
 - **lookup** — a name, title or plain keyword → the museums' own search (`GET /api/search`), no model.
 - **describe** — a short description → literal results first, then `POST /api/interpret` (vocabulary fast path when it covers the whole phrase, else `generateText` + `Output.object`) → the compiled `SearchQuery`, shown as removable chips on the wall label (`src/lib/query-chips.ts`: the reading, deduped, ≤ 6).
 - **curate** — a brief that needs judgment → a Curio turn in the thread.
 - **refine** — a change to what's on the wall → a Curio turn that knows the wall.
 
-`npm run eval:router` scores the rules on 72 labelled cases (98.6% at last count; the bar is 85%). A question ("who was Hammershøi", "tell me about these", with or without a "?") always goes to Curio, never to a keyword search. `jev.ts` is a Jev (`typesafe-ai/jev` via `experimental_evaluate`) router behind `CURIO_ROUTER=jev`, off by default and untested against the live model; it only goes on if it beats the rules by 5 points with p95 < 250ms.
+`npm run eval:router` scores the rules on 80 labelled cases (100% at last count; the bar is 85%). The rules lean to Curio: only a known name or label, one or two plain words, an artist plus a title, or a title typed in title case goes to lookup; anything with a mood, a condition or an intent is a Curio turn, and describe is never chosen automatically. A question ("who was Hammershøi", "tell me about these", with or without a "?") always goes to Curio, never to a keyword search. `jev.ts` is a Jev (`typesafe-ai/jev` via `experimental_evaluate`) router behind `CURIO_ROUTER=jev`, off by default and untested against the live model; it only goes on if it beats the rules by 5 points with p95 < 250ms.
 
 ### The fanout seam
 

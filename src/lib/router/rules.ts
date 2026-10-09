@@ -1,6 +1,6 @@
 import artistMovements from "@/data/artist-movements.json";
 import { CATEGORIES } from "@/lib/presets";
-import { matchVocab, VOCAB } from "@/lib/vocab";
+import { VOCAB } from "@/lib/vocab";
 import type { Route } from "@/lib/thread/types";
 
 /**
@@ -16,10 +16,15 @@ import type { Route } from "@/lib/thread/types";
  *   refine    a follow-up about what's on the wall ("warmer", "only the
  *             prints", "more like this").
  *
+ * Curio is the default. Only the inputs a model can't improve on go straight
+ * to the museums' search: a known name or label, a bare keyword or two, an
+ * artist and a title, a title typed as one. Anything with a mood, a
+ * condition or an intent is a Curio turn. `describe` is never chosen here;
+ * it stays in the composer's menu as an override.
+ *
  * Rules first because they're free and instant; the same `classify` shape is
- * what a Jev-backed router plugs into (see ./jev.ts). Misroutes are cheap in
- * one direction (a lookup that should have been curated still shows works)
- * and the composer always shows the route before you press it.
+ * what a Jev-backed router plugs into (see ./jev.ts). The composer always
+ * shows the route before you press it.
  */
 
 export interface RouteContext {
@@ -100,7 +105,7 @@ export function classifyRules(input: string, ctx: RouteContext): RouteDecision {
     reason,
   });
 
-  if (!q) return decide("lookup", 0, "empty");
+  if (!q) return decide("curate", 0, "empty");
   if (ctx.attachments > 0) {
     return decide(ctx.hasWall && REFINE.test(q) ? "refine" : "curate", 0.85, "has attachments");
   }
@@ -109,20 +114,36 @@ export function classifyRules(input: string, ctx: RouteContext): RouteDecision {
     return decide("curate", 0.75, "a question");
   }
   if (CURATE.test(q)) return decide("curate", 0.8, "asks for judgment");
-  if (words >= 7) return decide("curate", 0.65, "a long brief");
+  if (words >= 6) return decide("curate", 0.75, "a brief");
 
   const { artistNames: names, surnames: last } = artists();
-  const isName = names.has(q) || last.has(q) || LABELS.has(q);
-  if (isName) return decide("lookup", 0.9, "a known name or label");
+  if (names.has(q) || last.has(q) || LABELS.has(q)) return decide("lookup", 0.9, "a known name or label");
 
-  // A short phrase is a lookup (the museums' own keyword search does well with
-  // names, titles and subjects, including ones our artist list lacks, like
-  // Hiroshige) unless it carries a mood or a condition: then it's read as a
-  // description, even with an artist in it ("monet mist" wants Monet's misty
-  // works, not every Monet with "mist" in the title).
-  const mood = DESCRIPTIVE.test(q);
-  if (words <= 3 && !mood) return decide("lookup", 0.7, "a short keyword or name");
-  return decide("describe", mood || matchVocab(input).length > 0 ? 0.7 : 0.55, "a description");
+  // A mood or a condition wants reading, even with an artist in it ("monet
+  // mist" wants Monet's misty works, not every Monet with "mist" in the title).
+  if (DESCRIPTIVE.test(q)) return decide("curate", 0.75, "a mood to read");
+
+  // What's left is plain words. The museums' own search does well with one
+  // or two (names our artist list lacks, like Hiroshige; "sunflowers"), an
+  // artist followed by a title ("Monet water lilies"), or a title typed as
+  // one ("The Great Wave"). Longer plain phrases ("dogs in hats") go to Curio.
+  if (words <= 2) return decide("lookup", 0.7, "a bare keyword or name");
+  const [first, second] = q.split(" ");
+  const leadsWithArtist = last.has(first) || names.has(`${first} ${second}`);
+  if (words <= 4 && leadsWithArtist) return decide("lookup", 0.7, "an artist and a title");
+  if (isTitleCase(input)) return decide("lookup", 0.65, "a title");
+  return decide("curate", 0.65, "a phrase with intent");
+}
+
+const SMALL_WORDS = new Set(["a", "an", "the", "of", "in", "on", "at", "with", "and", "by", "for", "to", "from"]);
+
+/** "The Great Wave", "Girl with a Pearl Earring": every word but the small
+ *  ones capitalised. A phone capitalises only the first word, so a typed
+ *  sentence ("Dogs in hats") doesn't pass. */
+function isTitleCase(input: string): boolean {
+  const words = input.trim().split(/\s+/);
+  if (words.length < 2 || words.length > 6) return false;
+  return words.every((w, i) => (i > 0 && SMALL_WORDS.has(w.toLowerCase())) || /^\p{Lu}/u.test(w));
 }
 
 /** The composer's verb for a route: what pressing Enter will do. */

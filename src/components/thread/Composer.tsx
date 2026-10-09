@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ArrowUp, ChevronDown, Square, User, X, Layers } from "lucide-react";
 import { routeVerb } from "@/lib/router/rules";
 import type { Attachment, Route } from "@/lib/thread/types";
@@ -10,11 +11,14 @@ import { useThread, type RouteOverride } from "./ThreadProvider";
 /** the override menu's height, for choosing whether it fits above */
 const MENU_HEIGHT = 240;
 
+/** Every message is a Curio turn unless the menu says otherwise. */
+const DEFAULT_MODE: RouteOverride = "curate";
+
 const OVERRIDES: { id: RouteOverride; label: string; hint: string }[] = [
-  { id: null, label: "Let Curio decide", hint: "Search a name, read a description, or curate a brief" },
+  { id: "curate", label: "Ask Curio", hint: "Search, look, and curate an exhibit" },
+  { id: null, label: "Let Curio decide", hint: "Search names and titles directly, ask Curio the rest" },
   { id: "lookup", label: "Search exactly", hint: "The museums' own search, as typed" },
   { id: "describe", label: "Read it as a description", hint: "Turn the phrase into subjects and periods" },
-  { id: "curate", label: "Ask Curio", hint: "Search, look, and curate an exhibit" },
 ];
 
 function attachmentKey(a: Attachment) {
@@ -90,19 +94,25 @@ export default function Composer({
     useThread();
   const attachments = attachmentsHere ? allAttachments : [];
   const [value, setValue] = useState("");
-  const [override, setOverride] = useState<RouteOverride>(null);
+  const [override, setOverride] = useState<RouteOverride>(DEFAULT_MODE);
   const [menu, setMenu] = useState(false);
   // The override menu opens above the button (the thread's input sits at
   // the bottom of the screen) unless there isn't room there, e.g. the top bar.
   const [menuBelow, setMenuBelow] = useState(false);
+  // The menu renders on <body>, fixed to the button group's corner: the
+  // composers sit inside `.animate-fade` wrappers, whose fill mode keeps a
+  // stacking context alive that would trap it under the wall.
+  const [anchor, setAnchor] = useState<{ right: number; top: number; bottom: number } | null>(null);
   const ref = useRef<HTMLTextAreaElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+  const caretRef = useRef<HTMLButtonElement>(null);
   const busy = chatStatus === "submitted" || chatStatus === "streaming";
   const hero = variant === "hero";
   const bar = variant === "bar";
 
   // The route preview settles 150ms after typing stops.
-  const [route, setRoute] = useState<Route>("lookup");
+  const [route, setRoute] = useState<Route>("curate");
   useEffect(() => {
     const t = setTimeout(() => setRoute(classify(value || " ", attachmentsHere).route), 150);
     return () => clearTimeout(t);
@@ -119,6 +129,27 @@ export default function Composer({
     }
     setMenu((v) => !v);
   };
+
+  // Follow the button while the menu is open (page scroll, the thread's
+  // resize, the phone keyboard).
+  useLayoutEffect(() => {
+    if (!menu) return;
+    const place = () => {
+      const r = menuRef.current?.getBoundingClientRect();
+      if (r) setAnchor({ right: r.right, top: r.top, bottom: r.bottom });
+    };
+    place();
+    // On <body> the menu is no longer next in the tab order: move focus in.
+    requestAnimationFrame(() =>
+      popRef.current?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus({ preventScroll: true }),
+    );
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
+    return () => {
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
+    };
+  }, [menu]);
 
   // Grow with the text: min 1 line (2 on the hero), max 8 (4 in the bar).
   useLayoutEffect(() => {
@@ -147,9 +178,14 @@ export default function Composer({
   useEffect(() => {
     if (!menu) return;
     const onDown = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenu(false);
+      const t = e.target as Node;
+      if (!menuRef.current?.contains(t) && !popRef.current?.contains(t)) setMenu(false);
     };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenu(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setMenu(false);
+      caretRef.current?.focus();
+    };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
     return () => {
@@ -163,7 +199,7 @@ export default function Composer({
     if (!value.trim() && attachments.length === 0) return;
     submit(value, override, attachmentsHere);
     setValue("");
-    setOverride(null);
+    setOverride(DEFAULT_MODE);
   };
 
   const canSend = !busy && (value.trim().length > 0 || attachments.length > 0);
@@ -213,7 +249,7 @@ export default function Composer({
           hero ? "px-3 pt-1 pb-3" : bar ? "px-2 py-2" : "px-2 pt-0.5 pb-2"
         }`}
       >
-        {override && (
+        {override !== DEFAULT_MODE && (
           <span className="caption mr-auto pl-1">{OVERRIDES.find((o) => o.id === override)?.label}</span>
         )}
         {busy ? (
@@ -247,6 +283,7 @@ export default function Composer({
             </button>
             <button
               type="button"
+              ref={caretRef}
               aria-label="How to read this"
               aria-haspopup="menu"
               aria-expanded={menu}
@@ -258,11 +295,13 @@ export default function Composer({
             >
               <Icon icon={ChevronDown} size={13} />
             </button>
-            {menu && (
+            {menu && anchor && createPortal(
               <div
+                ref={popRef}
                 role="menu"
-                className={`animate-pop-right absolute right-0 z-30 w-72 border border-ink bg-paper py-1 ${
-                  menuBelow ? "top-full mt-1" : "bottom-full mb-1"
+                style={{ left: anchor.right, top: menuBelow ? anchor.bottom + 4 : anchor.top - 4 }}
+                className={`animate-pop-right fixed z-[60] w-72 -translate-x-full border border-ink bg-paper py-1 ${
+                  menuBelow ? "" : "-translate-y-full"
                 }`}
               >
                 {OVERRIDES.map((o) => (
@@ -290,7 +329,8 @@ export default function Composer({
                     </span>
                   </button>
                 ))}
-              </div>
+              </div>,
+              document.body,
             )}
           </div>
         )}
