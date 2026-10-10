@@ -122,13 +122,17 @@ export default function DetailView({
   }, [onClose, onPrev, onNext]);
 
   // Dialog focus: land on the close button on open, and hand focus back to
-  // whatever opened us when we unmount.
+  // whatever opened us when we unmount. The opener is read on the first
+  // render: by the time an effect runs, the page behind has gone inert and
+  // the browser has already moved focus off it to <body>.
+  const [opener] = useState(() =>
+    typeof document === "undefined" ? null : (document.activeElement as HTMLElement | null),
+  );
   const closeBtn = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    const opener = document.activeElement as HTMLElement | null;
     closeBtn.current?.focus();
     return () => opener?.focus?.();
-  }, []);
+  }, [opener]);
 
   // Phone: stepping to the next work starts at its picture, not wherever the
   // last one's label was scrolled to.

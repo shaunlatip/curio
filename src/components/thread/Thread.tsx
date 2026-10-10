@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
 import { ArrowDown, RotateCcw, X } from "lucide-react";
 import type { Artwork } from "@/lib/types";
@@ -242,6 +242,19 @@ export default function Thread({
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [open, setOpen]);
+
+  // Closing the thread from inside it (Escape, the close button) would drop
+  // focus to <body> as the panel unmounts: hand it back to whatever had it
+  // when the thread opened, if that's still on the page. A layout effect, so
+  // it reads the focus before the thread's own input takes it on mount.
+  useLayoutEffect(() => {
+    if (!open) return;
+    const opener = document.activeElement as HTMLElement | null;
+    return () => {
+      const lost = !document.activeElement || document.activeElement === document.body;
+      if (lost && opener && opener !== document.body && opener.isConnected) opener.focus();
+    };
+  }, [open]);
 
   const followUp = useCallback((text: string) => submit(text, "refine"), [submit]);
   const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
