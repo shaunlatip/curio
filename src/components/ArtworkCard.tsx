@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { Artwork } from "@/lib/types";
 import { useCalmScore } from "@/lib/calm-client";
 import { artworkTint } from "@/lib/tint";
@@ -65,14 +65,12 @@ export default function ArtworkCard({
   const commentTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // stable across renders (it only touches a ref and a state setter), so the
   // wall-wide "which one is open" check can compare it
-  const closer = useRef<(() => void) | null>(null);
-  closer.current ??= () => {
+  const closeComment = useCallback(function close() {
     if (commentTimer.current) clearTimeout(commentTimer.current);
     commentTimer.current = null;
     setCommentAt(null);
-    if (closeOpenComment === closer.current) closeOpenComment = null;
-  };
-  const closeComment = closer.current;
+    if (closeOpenComment === close) closeOpenComment = null;
+  }, []);
   const openComment = () => {
     commentTimer.current = null;
     const frame = frameRef.current;
@@ -89,9 +87,9 @@ export default function ArtworkCard({
   useEffect(
     () => () => {
       if (commentTimer.current) clearTimeout(commentTimer.current);
-      if (closeOpenComment === closer.current) closeOpenComment = null;
+      if (closeOpenComment === closeComment) closeOpenComment = null;
     },
-    [],
+    [closeComment],
   );
 
   // Reserving the image box up front is what stops the masonry from

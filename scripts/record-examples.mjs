@@ -73,7 +73,7 @@ async function record(ex) {
       }
       const at = Date.now() - started;
       if (c.type === "start" || c.type === "finish" || c.type === "message-metadata") {
-        metadata = { ...metadata, ...(c.messageMetadata ?? {}) };
+        metadata = { ...metadata, ...c.messageMetadata };
       } else if (c.type === "text-start") {
         const p = { type: "text", text: "", at };
         byId.set(`t:${c.id}`, p);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowDownToLine, Bookmark, BookmarkCheck, MessageSquarePlus, X } from "lucide-react";
 import type { Artwork, SearchQuery, SearchResponse, SourceError, SourceId } from "@/lib/types";
 import { requestCalmForAll, subscribeCalm } from "@/lib/calm-client";
@@ -80,8 +80,12 @@ function entryFrom(
 
 export default function Home() {
   const [results, setResults] = useState<ResultState>(EMPTY);
+  // read by onTurnEnd, which the thread calls from an effect: synced in a
+  // layout effect (not during render) so it's current by then
   const resultsRef = useRef(results);
-  resultsRef.current = results;
+  useLayoutEffect(() => {
+    resultsRef.current = results;
+  }, [results]);
   const [loading, setLoading] = useState(false);
   const [curating, setCurating] = useState(false);
   const [reading, setReading] = useState(false);
@@ -506,8 +510,9 @@ export default function Home() {
     }
     const colorlessCount = sort === "similar" && targetColor ? list.filter((a) => !a.color).length : 0;
     return { displayArtworks: sortArtworks(list, sort, targetColor), availableMovements, colorlessCount };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- calmTick forces
-    // a re-sort as lazily-computed scores resolve; it carries no data itself.
+    // calmTick forces a re-sort as lazily-computed scores resolve; it carries
+    // no data itself. (The disable has to sit on the line before the array.)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [results.artworks, sort, activeMovements, targetColor, calmTick]);
 
   // Detail navigation: ← / → walk the wall in its displayed order.

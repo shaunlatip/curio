@@ -62,7 +62,7 @@ export function MetaChip({
  */
 function distribute(artworks: Artwork[], k: number): { a: Artwork; i: number }[][] {
   const cols: { a: Artwork; i: number }[][] = Array.from({ length: k }, () => []);
-  const heights = new Array(k).fill(0);
+  const heights = Array.from({ length: k }, () => 0);
   artworks.forEach((a, i) => {
     const { width, height } = a.dims ?? {};
     const ratio = width && height ? width / height : 0.8;

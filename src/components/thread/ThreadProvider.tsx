@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -207,19 +208,28 @@ export default function ThreadProvider({
   wall: WallContext;
   children: ReactNode;
 }) {
-  const handlersRef = useRef(handlers);
-  handlersRef.current = handlers;
-  const wallRef = useRef(wall);
-  wallRef.current = wall;
   // The exhibit last put on the wall. It only counts while the wall is
   // still showing an exhibit (a search or a collection replaces it).
   const [lastExhibitId, setWallExhibitId] = useState<string>();
   const wallExhibitId = wall.exhibit ? lastExhibitId : undefined;
+  // The latest props, for callbacks that outlive a render (the chat
+  // transport, stream handlers, timers). Synced after commit, not during
+  // render, so a render React throws away can't leak into them; a layout
+  // effect, so they're current before any passive effect or event reads them.
+  const handlersRef = useRef(handlers);
+  const wallRef = useRef(wall);
   const wallExhibitRef = useRef(wallExhibitId);
-  wallExhibitRef.current = wallExhibitId;
+  useLayoutEffect(() => {
+    handlersRef.current = handlers;
+    wallRef.current = wall;
+    wallExhibitRef.current = wallExhibitId;
+  });
 
   const transport = useMemo(
     () =>
+      // The transport only stores this callback and calls it at send time,
+      // never during render; the compiler can't see through the constructor.
+      // eslint-disable-next-line react/refs
       new DefaultChatTransport<CurioUIMessage>({
         api: "/api/agent",
         prepareSendMessagesRequest: ({ messages }) => ({
@@ -261,7 +271,9 @@ export default function ThreadProvider({
     },
   });
   const { messages, status: chatStatus, sendMessage, setMessages, stop: stopChat, regenerate, error } = chat;
-  messagesRef.current = messages;
+  useLayoutEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   const [stopped, setStopped] = useState(false);
   const [pendingSince, setPendingSince] = useState<number>();
