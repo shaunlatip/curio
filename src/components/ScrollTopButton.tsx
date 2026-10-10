@@ -12,14 +12,13 @@ import Icon from "./Icon";
  * toolbar, which owns the bottom-right corner there.
  */
 export default function ScrollTopButton({ enabled }: { enabled: boolean }) {
-  const [show, setShow] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  // derived, not reset in the effect: disabled means hidden whatever the scroll
+  const show = enabled && scrolled;
 
   useEffect(() => {
-    if (!enabled) {
-      setShow(false);
-      return;
-    }
-    const onScroll = () => setShow(window.scrollY > window.innerHeight * 1.5);
+    if (!enabled) return;
+    const onScroll = () => setScrolled(window.scrollY > window.innerHeight * 1.5);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);

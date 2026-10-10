@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { CATEGORIES } from "@/lib/presets";
 import { EXAMPLES } from "@/lib/examples";
 import { warmRecording } from "@/lib/example-recordings";
@@ -8,6 +8,14 @@ import type { SourceId } from "@/lib/types";
 import Composer from "./thread/Composer";
 import { useThread } from "./thread/ThreadProvider";
 import { sourceLabel } from "./SourceBadge";
+
+const FINE_POINTER = "(pointer: fine)";
+const finePointer = () => window.matchMedia(FINE_POINTER).matches;
+function subscribeFinePointer(onChange: () => void) {
+  const mq = window.matchMedia(FINE_POINTER);
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+}
 
 export interface ExamplePreview {
   slug: string;
@@ -33,10 +41,9 @@ export default function HomeHero({
   const { runExample } = useThread();
   // Focus the input on arrival, but not on touch screens (it would throw up
   // the keyboard over the page before anyone has read it).
-  const [autoFocus, setAutoFocus] = useState(false);
-  useEffect(() => {
-    setAutoFocus(window.matchMedia("(pointer: fine)").matches);
-  }, []);
+  // Read as an external store: false on the server and through hydration,
+  // the real answer right after, with no effect setting state.
+  const autoFocus = useSyncExternalStore(subscribeFinePointer, finePointer, () => false);
   const browse = (["Movements", "Subjects"] as const).map((group) => ({
     group,
     items: CATEGORIES.filter((c) => c.group === group),

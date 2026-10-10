@@ -146,10 +146,7 @@ function useSheetViewport(active: boolean) {
   const [box, setBox] = useState<{ top: number; height: number }>();
   useEffect(() => {
     const vv = window.visualViewport;
-    if (!active) {
-      setBox(undefined);
-      return;
-    }
+    if (!active) return;
     const root = document.documentElement;
     const overflow = root.style.overflow;
     root.style.overflow = "hidden";
@@ -164,9 +161,11 @@ function useSheetViewport(active: boolean) {
       root.style.overflow = overflow;
       vv?.removeEventListener("resize", update);
       vv?.removeEventListener("scroll", update);
+      // cleared on the way out, so reopening never starts from a stale box
+      setBox(undefined);
     };
   }, [active]);
-  return box;
+  return active ? box : undefined;
 }
 
 /** Suggestions shown in an empty thread: the same starting points as the wall. */

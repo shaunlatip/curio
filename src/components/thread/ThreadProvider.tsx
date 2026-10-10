@@ -305,11 +305,13 @@ export default function ThreadProvider({
 
   const mode = useMode();
   const [open, setOpenState] = useState(false);
-  const [width, setWidthState] = useState(THREAD_DEFAULT);
-  useEffect(() => {
+  // The saved width, read once as state starts. Safe to differ from the
+  // server's default: nothing renders from it until the thread opens.
+  const [width, setWidthState] = useState(() => {
+    if (typeof window === "undefined") return THREAD_DEFAULT;
     const saved = Number(localStorage.getItem("curio.threadWidth"));
-    if (saved >= THREAD_MIN) setWidthState(Math.min(saved, threadMax()));
-  }, []);
+    return saved >= THREAD_MIN ? Math.min(saved, threadMax()) : THREAD_DEFAULT;
+  });
   const setWidth = useCallback((w: number) => {
     const next = Math.round(Math.max(THREAD_MIN, Math.min(threadMax(), w)));
     setWidthState(next);
@@ -636,9 +638,9 @@ export default function ThreadProvider({
 
   const [seenId, setSeenId] = useState<string>();
   const visible = open;
-  useEffect(() => {
-    if (visible && curator.phase === "done") setSeenId(curator.messageId);
-  }, [visible, curator.phase, curator.messageId]);
+  // Seen the moment it shows. Adjusted during render (React's pattern for
+  // state that follows other state) rather than in an effect a commit later.
+  if (visible && curator.phase === "done" && seenId !== curator.messageId) setSeenId(curator.messageId);
   const unseen = curator.phase === "done" && curator.messageId !== seenId && !visible;
 
   // — background tabs: the title carries the status

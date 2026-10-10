@@ -10,7 +10,6 @@ export function useNow(on: boolean, ms = 1000): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (!on) return;
-    setNow(Date.now());
     const t = setInterval(() => setNow(Date.now()), ms);
     return () => clearInterval(t);
   }, [on, ms]);
@@ -28,12 +27,9 @@ export function useSteadyText(text: string, ms = 450): string {
   const [since, setSince] = useState(0);
   useEffect(() => {
     if (text === shown) return;
-    const wait = since + ms - Date.now();
-    if (wait <= 0) {
-      setShown(text);
-      setSince(Date.now());
-      return;
-    }
+    // past the floor already: the next tick (not a second render inside this
+    // commit), else when the current value has had its time
+    const wait = Math.max(0, since + ms - Date.now());
     const t = setTimeout(() => {
       setShown(text);
       setSince(Date.now());
