@@ -48,6 +48,16 @@ interface ResultState {
   note?: string;
   /** Curio's comments on individual works, by id */
   comments?: Record<string, string>;
+  /** the search itself failed (server error, offline): run it again */
+  retry?: () => void;
+}
+
+/** A search that failed outright, as opposed to one that found nothing: a
+ *  server error or a body that isn't the results shape. 4xx bodies carry the
+ *  normal empty shape and read as "nothing came back". */
+async function readSearch(res: Response): Promise<SearchResponse> {
+  if (res.status >= 500) throw new Error(`search failed (${res.status})`);
+  return (await res.json()) as SearchResponse;
 }
 
 interface Interpretation {
@@ -141,7 +151,7 @@ export default function Home() {
     setSearched(true);
     setActiveCollection(undefined);
     setActiveMovements([]);
-    setResults((r) => ({ ...r, heading, note: undefined, origin: "manual" }));
+    setResults((r) => ({ ...r, heading, note: undefined, origin: "manual", retry: undefined }));
     return myId;
   }, []);
 
@@ -149,15 +159,14 @@ export default function Home() {
     async (params: URLSearchParams, heading: string): Promise<SearchResponse | null> => {
       const myId = startSearch(heading);
       try {
-        const res = await fetch(`/api/search?${params}`);
-        const json = (await res.json()) as SearchResponse;
+        const json = await readSearch(await fetch(`/api/search?${params}`));
         if (reqSeq.current !== myId) return null;
         setResults({ ...json, origin: "manual", heading });
         return json;
       } catch {
         if (reqSeq.current !== myId) return null;
-        setResults({ ...EMPTY, heading });
-        return { artworks: [], errors: [] };
+        setResults({ ...EMPTY, heading, retry: () => void fetchResults(params, heading) });
+        return null;
       } finally {
         if (reqSeq.current === myId) setLoading(false);
       }
@@ -175,14 +184,14 @@ export default function Home() {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ query, sources }),
         });
-        const json = (await res.json()) as SearchResponse;
+        const json = await readSearch(res);
         if (reqSeq.current !== myId) return null;
         setResults({ ...json, origin: "manual", heading });
         return json;
       } catch {
         if (reqSeq.current !== myId) return null;
-        setResults({ ...EMPTY, heading });
-        return { artworks: [], errors: [] };
+        setResults({ ...EMPTY, heading, retry: () => void runQuerySearch(query, heading) });
+        return null;
       } finally {
         if (reqSeq.current === myId) setLoading(false);
       }
@@ -683,6 +692,7 @@ export default function Home() {
                 note={results.note}
                 comments={results.comments}
                 loading={loading}
+                onRetry={results.retry}
                 facts={facts}
                 aside={wallTools}
                 emptyHint={

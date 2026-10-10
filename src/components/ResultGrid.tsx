@@ -118,6 +118,7 @@ function ResultGrid({
   facts,
   aside,
   loadingLabel = "Searching the collections",
+  onRetry,
   onOpen,
 }: {
   artworks: Artwork[];
@@ -138,6 +139,8 @@ function ResultGrid({
   aside?: ReactNode;
   /** what the shimmer says while loading */
   loadingLabel?: string;
+  /** set when the search failed outright (not an empty result): retries it */
+  onRetry?: () => void;
   onOpen: (a: Artwork) => void;
 }) {
   const sectionRef = useRef<HTMLElement>(null);
@@ -202,8 +205,28 @@ function ResultGrid({
           <SkeletonGrid k={k} />
         ) : (
           <div className="animate-fade flex flex-col gap-3 py-12">
-            <p className="text-[15px]">Nothing came back for this.</p>
-            {emptyHint && <div className="caption flex flex-col gap-1.5">{emptyHint}</div>}
+            {onRetry ? (
+              // the request failed: not an empty result, so no "try other
+              // words" advice, just the way back in
+              <>
+                <p className="text-[15px]">The search didn&rsquo;t go through.</p>
+                <p className="caption">
+                  The museums or the connection may be slow.{" "}
+                  <button
+                    type="button"
+                    onClick={onRetry}
+                    className="underline underline-offset-2 hover:text-ink"
+                  >
+                    Try again
+                  </button>
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-[15px]">Nothing came back for this.</p>
+                {emptyHint && <div className="caption flex flex-col gap-1.5">{emptyHint}</div>}
+              </>
+            )}
           </div>
         )
       ) : (
