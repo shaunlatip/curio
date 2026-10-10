@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ArrowUp, ChevronDown, Square, User, X, Layers } from "lucide-react";
 import { routeVerb } from "@/lib/router/rules";
@@ -107,6 +107,7 @@ export default function Composer({
   const menuRef = useRef<HTMLDivElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
   const caretRef = useRef<HTMLButtonElement>(null);
+  const menuId = useId();
   const busy = chatStatus === "submitted" || chatStatus === "streaming";
   const hero = variant === "hero";
   const bar = variant === "bar";
@@ -206,7 +207,9 @@ export default function Composer({
 
   return (
     <form
-      className="flex flex-col border border-ink bg-paper"
+      // focused, the box takes the wash (globals.css: text fields show focus
+      // with the wash, not a ring); without it only the caret says so
+      className="flex flex-col border border-ink bg-paper has-[textarea:focus-visible]:bg-wash"
       onSubmit={(e) => {
         e.preventDefault();
         send();
@@ -304,12 +307,16 @@ export default function Composer({
                   menuBelow ? "" : "-translate-y-full"
                 }`}
               >
-                {OVERRIDES.map((o) => (
+                {OVERRIDES.map((o, i) => (
                   <button
                     key={String(o.id)}
                     type="button"
                     role="menuitemradio"
                     aria-checked={override === o.id}
+                    // named by the label, described by the hint, rather than
+                    // one long run-on name
+                    aria-labelledby={`${menuId}-${i}-label`}
+                    aria-describedby={`${menuId}-${i}-hint`}
                     onClick={() => {
                       setOverride(o.id);
                       setMenu(false);
@@ -324,8 +331,12 @@ export default function Composer({
                       }`}
                     />
                     <span className="flex flex-col gap-0.5">
-                      <span className="text-[12px] font-medium">{o.label}</span>
-                      <span className="caption group-hover/o:text-paper">{o.hint}</span>
+                      <span id={`${menuId}-${i}-label`} className="text-[12px] font-medium">
+                        {o.label}
+                      </span>
+                      <span id={`${menuId}-${i}-hint`} className="caption group-hover/o:text-paper">
+                        {o.hint}
+                      </span>
                     </span>
                   </button>
                 ))}
