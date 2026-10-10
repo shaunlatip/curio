@@ -9,7 +9,9 @@
     "start": "next start",
     "eval:router": "node scripts/eval-router.mjs",
     "record:examples": "node scripts/record-examples.mjs",
-    "bench:models": "node scripts/bench-models.mjs"
+    "bench:models": "node scripts/bench-models.mjs",
+    "lint": "oxlint",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@ai-sdk/react": "^4.0.116",
@@ -31,11 +33,13 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@shadcn/lint": "^0.2.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "agentation": "^3.1.2",
+    "oxlint": "^1.87.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

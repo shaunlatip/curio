@@ -1,0 +1,8 @@
+{
+  "profile": "adopt",
+  "url": "http://localhost:4311",
+  "routes": [
+    "/"
+  ],
+  "ignore": []
+}
