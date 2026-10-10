@@ -24,7 +24,8 @@ export default function StatusPill() {
       <button
         type="button"
         onClick={toggle}
-        aria-controls="thread"
+        aria-expanded={open}
+        aria-controls={open ? "thread" : undefined}
         className="invert-hover flex min-w-0 max-w-[22rem] items-center gap-2 border border-ink px-3 py-2 text-[13px]"
       >
         <span aria-hidden className="flex w-3.5 shrink-0 justify-center text-accent">
@@ -43,7 +44,8 @@ export default function StatusPill() {
       <button
         type="button"
         onClick={toggle}
-        aria-controls="thread"
+        aria-expanded={open}
+        aria-controls={open ? "thread" : undefined}
         className="invert-hover animate-rise flex min-w-0 max-w-[22rem] items-center gap-2 border border-ink px-3 py-2 text-[13px]"
       >
         <span aria-hidden className="block h-2 w-2 shrink-0 bg-accent" />
@@ -58,7 +60,8 @@ export default function StatusPill() {
       <button
         type="button"
         onClick={toggle}
-        aria-controls="thread"
+        aria-expanded={open}
+        aria-controls={open ? "thread" : undefined}
         className="flex items-center gap-2 whitespace-nowrap border border-destructive px-3 py-2 text-[13px] text-destructive hover:bg-destructive hover:text-paper"
       >
         Didn&rsquo;t finish · Open
@@ -70,8 +73,9 @@ export default function StatusPill() {
     <button
       type="button"
       onClick={toggle}
-      aria-pressed={open}
-      aria-controls="thread"
+      // a disclosure: it shows and hides the thread, which only exists while open
+      aria-expanded={open}
+      aria-controls={open ? "thread" : undefined}
       className={`whitespace-nowrap border border-ink px-4 py-2 text-[13px] font-semibold ${
         open ? "bg-ink text-paper" : "invert-hover"
       }`}
