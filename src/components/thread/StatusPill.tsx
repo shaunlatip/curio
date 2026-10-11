@@ -80,7 +80,7 @@ export default function StatusPill() {
         open ? "bg-ink text-paper" : "invert-hover"
       }`}
     >
-      {open ? "Curio" : "Ask Curio"}
+      Ask Curio
     </button>
   );
 }
