@@ -17,6 +17,10 @@ npm run bench:models -- --env <path/.env.local> <model …>   # hosted models en
 
 Node 22, **npm** (not pnpm). After a dep change or a directory move, `rm -rf .next` before restarting (stale Turbopack manifest → "module is not a function" errors).
 
+## Cursor Cloud specific instructions
+
+Open the dev server at `http://localhost:3000`. Next.js 16 blocks its dev assets when the page is loaded from `127.0.0.1`, so the wall renders and clicks do nothing. `npm ci` then `npm run dev` is the setup. Search, categories, calm scoring, collections, export, the recorded examples, `npm run typecheck`, `npm run lint`, and `npm run eval:router` need no keys. Curio turns and the describe route need a local `claude` login or `AI_GATEWAY_API_KEY`. Art Institute images are blocked from datacenter addresses; the other museums still return works.
+
 Auth: nothing for search, categories, calm scoring, collections, export or the recorded examples. **Curio** (the agent) and the **describe** route call a model through one of two engines (`src/lib/ai/models.ts`, `curatorEngine()`):
 
 - **`claude`** (default off Vercel): a local Claude Code session on your `claude login`, through `ai-sdk-provider-claude-code`. Locked down to Curio's own tools: no built-in Claude Code tools, no user settings/hooks/CLAUDE.md, `strictMcpConfig` + `ENABLE_CLAUDEAI_MCP_SERVERS=false` so the account's connectors (Gmail, Todoist…) are invisible. Don't loosen that.
